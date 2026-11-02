@@ -5,10 +5,9 @@ import {
   Copy, 
   Check, 
   Clock, 
-  Mic, 
   FolderOpen,
   Settings,
-  Sparkles
+  HelpCircle
 } from 'lucide-react';
 import { OperativeCase, MongoHealthStatus } from '../types/clinical';
 import { seedDatabase } from '../services/api';
@@ -21,6 +20,7 @@ interface TopTelemetryBarProps {
   onOpenCompassModal: () => void;
   onOpenPastSurgeries: () => void;
   onOpenSettings: () => void;
+  onOpenWalkthrough: () => void;
   isSimulatedMode: boolean;
   onToggleSimulatedMode: () => void;
 }
@@ -33,19 +33,32 @@ export const TopTelemetryBar: React.FC<TopTelemetryBarProps> = ({
   onOpenCompassModal,
   onOpenPastSurgeries,
   onOpenSettings,
-  isSimulatedMode,
-  onToggleSimulatedMode
+  onOpenWalkthrough,
 }) => {
-  const [elapsedSeconds, setElapsedSeconds] = useState(2580);
+  // Dynamically calculate elapsed seconds from the case's actual creation/start timestamp
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [copiedUri, setCopiedUri] = useState(false);
-  const [isSeeding, setIsSeeding] = useState(false);
 
   useEffect(() => {
+    if (currentCase) {
+      const startTime = currentCase.session_start_time || currentCase.createdAt;
+      if (startTime) {
+        const startMs = new Date(startTime).getTime();
+        const initialDiff = Math.max(0, Math.floor((Date.now() - startMs) / 1000));
+        setElapsedSeconds(initialDiff);
+      } else {
+        setElapsedSeconds(0);
+      }
+    } else {
+      setElapsedSeconds(0);
+    }
+
     const timer = setInterval(() => {
       setElapsedSeconds((prev) => prev + 1);
     }, 1000);
+
     return () => clearInterval(timer);
-  }, []);
+  }, [currentCase?.case_id, currentCase?.session_start_time, currentCase?.createdAt]);
 
   const formatTimer = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
@@ -60,19 +73,8 @@ export const TopTelemetryBar: React.FC<TopTelemetryBarProps> = ({
     setTimeout(() => setCopiedUri(false), 2000);
   };
 
-  const handleSeed = async () => {
-    setIsSeeding(true);
-    try {
-      await seedDatabase();
-      onRefreshMongo();
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsSeeding(false);
-    }
-  };
-
   const isHold = currentCase?.case_status === 'SAFETY_HOLD';
+  const roomName = currentCase?.ot_room ? currentCase.ot_room.split('(')[0].trim() : 'OT';
 
   return (
     <header className="w-full bg-[#080D1A]/90 backdrop-blur-md border-b border-slate-800/80 px-6 py-3 flex items-center justify-between sticky top-0 z-40">
@@ -86,30 +88,34 @@ export const TopTelemetryBar: React.FC<TopTelemetryBarProps> = ({
             <div className="flex items-center gap-2">
               <span className="font-bold text-white tracking-tight text-sm">SurgiVoice</span>
               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-cyan-950/80 text-cyan-300 border border-cyan-500/30">
-                OT-04
+                {roomName}
               </span>
             </div>
             <p className="text-[11px] text-slate-400 font-medium">Sterile Clinical Logger</p>
           </div>
         </div>
 
-        {/* Patient Capsule */}
-        {currentCase && (
+        {/* Dynamic Patient Capsule */}
+        {currentCase?.patient_info && (
           <div className="hidden md:flex items-center gap-3 px-3.5 py-1.5 rounded-full bg-slate-900/80 border border-slate-800 text-xs">
             <span className="font-semibold text-slate-200">{currentCase.patient_info.name}</span>
             <span className="text-slate-600">•</span>
-            <span className="text-slate-400">{currentCase.patient_info.age}{currentCase.patient_info.gender[0]}</span>
+            <span className="text-slate-400">{currentCase.patient_info.age}{currentCase.patient_info.gender ? currentCase.patient_info.gender[0] : ''}</span>
             <span className="text-slate-600">•</span>
             <span className="font-mono text-slate-400 text-[11px]">{currentCase.patient_info.uhid}</span>
-            <span className="text-slate-600">•</span>
-            <span className="font-bold text-rose-300 bg-rose-950/60 px-1.5 py-0.2 rounded text-[10px]">
-              {currentCase.patient_info.blood_group}
-            </span>
+            {currentCase.patient_info.blood_group && (
+              <>
+                <span className="text-slate-600">•</span>
+                <span className="font-bold text-rose-300 bg-rose-950/60 px-1.5 py-0.2 rounded text-[10px]">
+                  {currentCase.patient_info.blood_group}
+                </span>
+              </>
+            )}
           </div>
         )}
       </div>
 
-      {/* Center: Live Timer & Voice Status */}
+      {/* Center: Real Elapsed Timer & Voice Status */}
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 border border-slate-800 text-xs">
           <Clock className="w-3.5 h-3.5 text-amber-400" />
@@ -132,8 +138,18 @@ export const TopTelemetryBar: React.FC<TopTelemetryBarProps> = ({
         </div>
       </div>
 
-      {/* Right: MongoDB Status & Quick Actions */}
+      {/* Right: Walkthrough Button, MongoDB Status & Quick Actions */}
       <div className="flex items-center gap-2.5">
+        {/* Interactive Walkthrough Tour Button */}
+        <button
+          onClick={onOpenWalkthrough}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-950/80 hover:bg-indigo-900 text-indigo-300 border border-indigo-500/30 text-xs font-semibold transition-all shadow-sm"
+          title="Interactive Feature Tour"
+        >
+          <HelpCircle className="w-3.5 h-3.5 text-indigo-400" />
+          <span>Tour</span>
+        </button>
+
         {/* MongoDB Compass Status Pill */}
         <button
           onClick={onOpenCompassModal}
@@ -143,7 +159,7 @@ export const TopTelemetryBar: React.FC<TopTelemetryBarProps> = ({
           <Database className="w-3.5 h-3.5 text-emerald-400" />
           <span className="font-mono text-slate-300 text-[11px]">127.0.0.1:27017</span>
           <span className="text-[10px] text-emerald-400 font-bold bg-emerald-950/80 px-1.5 py-0.5 rounded-full">
-            {mongoHealth?.totalDocuments ?? 12} docs
+            {mongoHealth?.totalDocuments ?? 0} docs
           </span>
         </button>
 

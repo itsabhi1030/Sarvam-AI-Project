@@ -215,17 +215,21 @@ export const WhoSafetyChecklistCard: React.FC<WhoSafetyChecklistCardProps> = ({
           </div>
         </div>
 
-        {/* Instruments */}
+        {/* Instruments (Dynamic tray name & counts) */}
         <div className="p-2.5 rounded-xl border bg-black/30 border-slate-800 text-slate-300 flex flex-col justify-between">
           <div className="flex items-center justify-between text-[11px]">
             <span className="text-slate-400">Tray</span>
-            <span className="text-[10px] font-bold text-emerald-400">Intact</span>
+            <span className={`text-[10px] font-bold ${counts.instruments_verified ? 'text-emerald-400' : 'text-amber-400'}`}>
+              {counts.instruments_verified ? 'Intact' : 'Verifying'}
+            </span>
           </div>
-          <div className="my-1 text-center font-bold text-sm text-white">
-            28 / 28
+          <div className="my-1 text-center font-bold text-sm text-white font-mono">
+            {counts.instruments_accounted != null && counts.instruments_total != null 
+              ? `${counts.instruments_accounted} / ${counts.instruments_total}` 
+              : counts.instruments_verified ? 'Verified' : 'Pending'}
           </div>
-          <div className="pt-1 border-t border-slate-800/60 text-center text-[10px] text-slate-500">
-            Lap Set #2
+          <div className="pt-1 border-t border-slate-800/60 text-center text-[10px] text-slate-500 truncate">
+            {counts.instruments_tray_name || 'Sterile Instrument Set'}
           </div>
         </div>
       </div>

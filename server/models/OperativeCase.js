@@ -1,9 +1,10 @@
 import mongoose from 'mongoose';
 
 const OperativeCaseSchema = new mongoose.Schema({
-  case_id: { type: String, required: true, unique: true, index: true }, // e.g., "OT-2026-1102-001"
+  case_id: { type: String, required: true, unique: true, index: true },
   ot_room: { type: String, default: "OT-04 (General & Laparoscopic Surgery)" },
   hospital_name: { type: String, default: "MIT-WPU Clinical Simulation & Research Hospital, Pune" },
+  session_start_time: { type: Date, default: Date.now },
   patient_info: {
     name: { type: String, required: true },
     uhid: { type: String, required: true },
@@ -33,13 +34,13 @@ const OperativeCaseSchema = new mongoose.Schema({
       timestamp: { type: Date, default: Date.now }
     }],
     sutures_and_hemostasis: [{
-      material: String,       // e.g., "2-0 Vicryl", "1-0 Silk", "3-0 Prolene"
-      anatomical_target: String, // e.g., "Mesoappendix", "Appendiceal Base", "Rectus Sheath"
-      technique: String       // e.g., "Transfixation ligature", "Continuous interlocking"
+      material: String,
+      anatomical_target: String,
+      technique: String
     }],
     implants_registry: [{
-      implant_name: String,   // e.g., "6-Hole Locking Compression Plate (LCP)"
-      specification: String,  // e.g., "3.5mm Titanium, 4 Cortical + 2 Locking Screws"
+      implant_name: String,
+      specification: String,
       serial_batch_code: String
     }],
     estimated_blood_loss_ml: { type: Number, default: 0 },
@@ -74,14 +75,17 @@ const OperativeCaseSchema = new mongoose.Schema({
         recovered: { type: Number, default: 4 },
         matched: { type: Boolean, default: true }
       },
-      instruments_verified: { type: Boolean, default: true }
+      instruments_verified: { type: Boolean, default: true },
+      instruments_tray_name: { type: String, default: "Standard Lap Set" },
+      instruments_total: { type: Number, default: 28 },
+      instruments_accounted: { type: Number, default: 28 }
     },
     count_discrepancy_alert: { type: Boolean, default: false },
     discrepancy_notes: { type: String, default: "" }
   },
   vernacular_family_briefings: [{
-    language_code: String,    // e.g., "mr-IN", "hi-IN"
-    language_label: String,   // e.g., "Marathi", "Hindi"
+    language_code: String,
+    language_label: String,
     native_script_text: String,
     english_back_translation: String,
     audio_base64: String,

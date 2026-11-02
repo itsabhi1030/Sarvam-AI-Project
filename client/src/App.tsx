@@ -26,6 +26,9 @@ import {
 import { 
   SettingsModal 
 } from './components/SettingsModal';
+import { 
+  WalkthroughModal 
+} from './components/WalkthroughModal';
 
 import { 
   OperativeCase, 
@@ -43,7 +46,7 @@ import {
 
 export function App() {
   const [cases, setCases] = useState<OperativeCase[]>([]);
-  const [selectedCaseId, setSelectedCaseId] = useState<string>('OT-2026-1102-001');
+  const [selectedCaseId, setSelectedCaseId] = useState<string>('');
   const [currentCase, setCurrentCase] = useState<OperativeCase | null>(null);
   const [logs, setLogs] = useState<VoiceDictationLog[]>([]);
   const [mongoHealth, setMongoHealth] = useState<MongoHealthStatus | null>(null);
@@ -58,18 +61,30 @@ export function App() {
   const [pace, setPace] = useState(1.05);
   const [autoPlay, setAutoPlay] = useState(true);
 
-  // Latest verification readback audio & text
-  const [latestReadbackSentence, setLatestReadbackSentence] = useState(
-    'Operative findings logged. Retrocecal gangrenous appendix ligated with 2-0 Vicryl and 1-0 Silk. Five sponges and ten swabs verified matched.'
-  );
+  // Dynamic verification readback audio & text (loaded from MongoDB active case)
+  const [latestReadbackSentence, setLatestReadbackSentence] = useState<string>('');
   const [latestAudioBase64, setLatestAudioBase64] = useState<string | undefined>();
 
   // Modals
   const [isCompassModalOpen, setIsCompassModalOpen] = useState(false);
   const [isPastSurgeriesOpen, setIsPastSurgeriesOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isWalkthroughOpen, setIsWalkthroughOpen] = useState(false);
 
-  // Load initial health & cases
+  // Check if first-time user login for walkthrough tour
+  useEffect(() => {
+    const hasSeenTour = localStorage.getItem('surgivoice_walkthrough_seen');
+    if (!hasSeenTour) {
+      setIsWalkthroughOpen(true);
+    }
+  }, []);
+
+  const handleCloseWalkthrough = () => {
+    setIsWalkthroughOpen(false);
+    localStorage.setItem('surgivoice_walkthrough_seen', 'true');
+  };
+
+  // Load initial health & cases dynamically from MongoDB
   const loadInitialData = useCallback(async () => {
     try {
       const health = await fetchMongoHealth();
@@ -79,11 +94,17 @@ export function App() {
       setCases(caseList);
 
       if (caseList.length > 0) {
-        const targetId = caseList.find(c => c.case_id === selectedCaseId) ? selectedCaseId : caseList[0].case_id;
+        // Pick selected case or first case from MongoDB
+        const targetId = selectedCaseId && caseList.find(c => c.case_id === selectedCaseId)
+          ? selectedCaseId
+          : caseList[0].case_id;
+
         setSelectedCaseId(targetId);
         const details = await fetchCaseDetails(targetId);
         setCurrentCase(details.caseData);
         setLogs(details.logs || []);
+
+        // Load latest readback dynamically from the last log if available
         if (details.logs && details.logs.length > 0) {
           const lastLog = details.logs[details.logs.length - 1];
           if (lastLog.ot_readback_sentence) {
@@ -92,6 +113,9 @@ export function App() {
           if (lastLog.audio_base64) {
             setLatestAudioBase64(lastLog.audio_base64);
           }
+        } else {
+          setLatestReadbackSentence('');
+          setLatestAudioBase64(undefined);
         }
       }
     } catch (err) {
@@ -117,6 +141,9 @@ export function App() {
         if (lastLog.audio_base64) {
           setLatestAudioBase64(lastLog.audio_base64);
         }
+      } else {
+        setLatestReadbackSentence('');
+        setLatestAudioBase64(undefined);
       }
     } catch (err) {
       console.error(err);
@@ -238,15 +265,17 @@ export function App() {
   };
 
   const handleNewCase = async () => {
-    const newCaseId = `OT-2026-${Date.now().toString().slice(-4)}-${Math.floor(100 + Math.random() * 900)}`;
+    const timestamp = Date.now();
+    const newCaseId = `OT-2026-${timestamp.toString().slice(-4)}-${Math.floor(100 + Math.random() * 900)}`;
     const newPayload: Partial<OperativeCase> = {
       case_id: newCaseId,
-      ot_room: "OT-04 (General & Laparoscopic Surgery)",
+      ot_room: "OT-04 (General Surgery)",
       hospital_name: "MIT-WPU Clinical Simulation & Research Hospital, Pune",
+      session_start_time: new Date().toISOString(),
       patient_info: {
         name: "New Operative Patient",
         uhid: `#IN-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-        age: 35,
+        age: 38,
         gender: "Female",
         blood_group: "B+",
         allergies: [],
@@ -261,7 +290,7 @@ export function App() {
       nabh_operative_note: {
         pre_op_diagnosis: "Awaiting intraoperative dictation...",
         post_op_diagnosis: "Awaiting intraoperative dictation...",
-        procedure_title: "Pending Operative Dictation",
+        procedure_title: "Active Sterile Session",
         surgical_approach: "Pending",
         anesthesia_type: "General Endotracheal Anesthesia (GETA)",
         incision_type: "Not logged",
@@ -273,7 +302,7 @@ export function App() {
         intra_op_fluids_ml: 500,
         urine_output_ml: 100,
         specimens_collected: [],
-        complications: "Nil intraoperative complications",
+        complications: "Nil",
         closure_details: "Pending closure",
         post_op_orders: []
       },
@@ -285,7 +314,10 @@ export function App() {
           abdominal_sponges: { deployed: 5, recovered: 5, matched: true },
           raytec_gauze_swabs: { deployed: 10, recovered: 10, matched: true },
           suture_needles: { deployed: 4, recovered: 4, matched: true },
-          instruments_verified: true
+          instruments_verified: true,
+          instruments_tray_name: "Standard Sterile Lap Set",
+          instruments_total: 28,
+          instruments_accounted: 28
         },
         count_discrepancy_alert: false,
         discrepancy_notes: "Initial counts verified prior to skin incision."
@@ -305,6 +337,8 @@ export function App() {
       setSelectedCaseId(created.case_id);
       setCurrentCase(created);
       setLogs([]);
+      setLatestReadbackSentence('');
+      setLatestAudioBase64(undefined);
     } catch (e) {
       console.error(e);
     }
@@ -321,6 +355,7 @@ export function App() {
         onOpenCompassModal={() => setIsCompassModalOpen(true)}
         onOpenPastSurgeries={() => setIsPastSurgeriesOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenWalkthrough={() => setIsWalkthroughOpen(true)}
         isSimulatedMode={isSimulatedMode}
         onToggleSimulatedMode={() => setIsSimulatedMode((prev) => !prev)}
       />
@@ -374,6 +409,12 @@ export function App() {
           />
         </div>
       </main>
+
+      {/* Onboarding Interactive Walkthrough Modal */}
+      <WalkthroughModal
+        isOpen={isWalkthroughOpen}
+        onClose={handleCloseWalkthrough}
+      />
 
       {/* Modals */}
       <MongoCompassInspectorModal

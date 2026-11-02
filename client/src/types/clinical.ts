@@ -74,6 +74,9 @@ export interface WhoSafetyChecklist {
     raytec_gauze_swabs: CountCategory;
     suture_needles: CountCategory;
     instruments_verified: boolean;
+    instruments_tray_name?: string;
+    instruments_total?: number;
+    instruments_accounted?: number;
   };
   count_discrepancy_alert: boolean;
   discrepancy_notes: string;
@@ -93,6 +96,7 @@ export interface OperativeCase {
   case_id: string;
   ot_room: string;
   hospital_name: string;
+  session_start_time?: string;
   patient_info: PatientInfo;
   surgical_team: SurgicalTeam;
   nabh_operative_note: NabhOperativeNote;

@@ -56,7 +56,7 @@ export const NabhOperativeRecordCard: React.FC<NabhOperativeRecordCardProps> = (
                 Active Procedure
               </span>
               <span className="text-[10px] font-semibold text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded-full border border-cyan-500/20">
-                {note.surgical_approach || 'Open'} Approach
+                {note.surgical_approach ? `${note.surgical_approach} Approach` : 'Pending Dictation'}
               </span>
             </div>
             <h3 className="text-sm font-bold text-white mt-0.5">
@@ -107,8 +107,8 @@ export const NabhOperativeRecordCard: React.FC<NabhOperativeRecordCardProps> = (
           </div>
 
           <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-800/60">
-            <span>Fluids: <strong className="text-white font-mono">{note.intra_op_fluids_ml || 500}ml</strong></span>
-            <span>Urine: <strong className="text-white font-mono">{note.urine_output_ml || 150}ml</strong></span>
+            <span>Fluids: <strong className="text-white font-mono">{note.intra_op_fluids_ml != null ? `${note.intra_op_fluids_ml} ml` : '—'}</strong></span>
+            <span>Urine: <strong className="text-white font-mono">{note.urine_output_ml != null ? `${note.urine_output_ml} ml` : '—'}</strong></span>
           </div>
         </div>
       </div>
