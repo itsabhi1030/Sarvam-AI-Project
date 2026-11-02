@@ -1,0 +1,14 @@
+{
+  "name": "sarvam-ai-project",
+  "version": "1.0.0",
+  "description": "SurgiVoice Indic — Sterile Hands-Free OT Operative Logger & Clinical Safety Platform for Sarvam Campus '26",
+  "scripts": {
+    "server": "cd server && npm start",
+    "client": "cd client && npm run dev",
+    "dev": "concurrently -n \"SERVER,CLIENT\" -c \"cyan,magenta\" \"npm run server\" \"npm run client\"",
+    "seed": "cd server && node -e \"import('./seed/seedData.js').then(s => s.seedInitialDatabase()).then(() => process.exit(0))\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
