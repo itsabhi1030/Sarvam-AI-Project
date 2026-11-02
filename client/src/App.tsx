@@ -3,6 +3,9 @@ import {
   TopTelemetryBar 
 } from './components/TopTelemetryBar';
 import { 
+  StageScenarioBar 
+} from './components/StageScenarioBar';
+import { 
   SterileVoiceConsole 
 } from './components/SterileVoiceConsole';
 import { 
@@ -29,13 +32,13 @@ import {
   VoiceDictationLog, 
   MongoHealthStatus 
 } from './types/clinical';
+import { DemoScenario } from './constants/demoScenarios';
 import { 
   fetchMongoHealth, 
   fetchAllCases, 
   fetchCaseDetails, 
   processVoiceInput, 
-  updateSurgicalCounts,
-  seedDatabase
+  updateSurgicalCounts
 } from './services/api';
 
 export function App() {
@@ -100,7 +103,6 @@ export function App() {
     loadInitialData();
   }, [loadInitialData]);
 
-  // Case Selection Change
   const handleSelectCase = async (caseId: string) => {
     setSelectedCaseId(caseId);
     try {
@@ -121,8 +123,7 @@ export function App() {
     }
   };
 
-  // Process Simulated or Typed Transcript
-  const handleSendTranscript = async (transcript: string, scenarioKey?: string) => {
+  const handleSendTranscript = async (transcript: string, _scenarioKey?: string) => {
     if (!currentCase || isProcessing) return;
     setIsProcessing(true);
 
@@ -155,7 +156,6 @@ export function App() {
     }
   };
 
-  // Process Live Microphone Audio Blob via Saaras STT
   const handleSendAudioBlob = async (blob: Blob) => {
     if (!currentCase || isProcessing) return;
     setIsProcessing(true);
@@ -189,7 +189,6 @@ export function App() {
     }
   };
 
-  // Adjust Counts from WHO Safety Matrix
   const handleUpdateCount = async (
     category: 'abdominal_sponges' | 'raytec_gauze_swabs' | 'suture_needles',
     type: 'deployed' | 'recovered',
@@ -224,7 +223,6 @@ export function App() {
     }
   };
 
-  // Toggle WHO Phase Checkbox
   const handleTogglePhase = (phase: 'sign_in_completed' | 'time_out_completed' | 'sign_out_completed') => {
     if (!currentCase) return;
     setCurrentCase((prev) => {
@@ -239,7 +237,6 @@ export function App() {
     });
   };
 
-  // Create New Operative Case Session
   const handleNewCase = async () => {
     const newCaseId = `OT-2026-${Date.now().toString().slice(-4)}-${Math.floor(100 + Math.random() * 900)}`;
     const newPayload: Partial<OperativeCase> = {
@@ -314,8 +311,8 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#060A12] text-slate-100 flex flex-col font-['Plus_Jakarta_Sans'] selection:bg-cyan-500 selection:text-black">
-      {/* Zone A: Top Sterile Telemetry & MongoDB Compass Status Bar */}
+    <div className="min-h-screen bg-[#060A14] text-slate-100 flex flex-col font-['Plus_Jakarta_Sans']">
+      {/* Top Telemetry Header */}
       <TopTelemetryBar
         currentCase={currentCase}
         mongoHealth={mongoHealth}
@@ -328,22 +325,16 @@ export function App() {
         onToggleSimulatedMode={() => setIsSimulatedMode((prev) => !prev)}
       />
 
-      {/* Main Single-Screen Zero-Scroll Surgical Bento Grid (Zones B, C, D) */}
-      <main className="flex-1 p-3.5 max-w-[1920px] mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-stretch">
-        {/* Zone B: Left Column — Ambient Audio Console & Diarized Feed (4 Cols) */}
-        <section className="lg:col-span-4 flex flex-col gap-3.5 h-full">
-          <SterileVoiceConsole
-            logs={logs}
-            isProcessing={isProcessing}
-            onSendTranscript={handleSendTranscript}
-            onSendAudioBlob={handleSendAudioBlob}
-            sttModel={sttModel}
-            sttMode={sttMode}
-          />
-        </section>
+      {/* Sleek Stage Scenario Injection Strip */}
+      <StageScenarioBar
+        isProcessing={isProcessing}
+        onSelectScenario={(scenario: DemoScenario) => handleSendTranscript(scenario.spokenDictation, scenario.id)}
+      />
 
-        {/* Zone C: Center Column — WHO Safety Matrix & NABH Operative Note (5 Cols) */}
-        <section className="lg:col-span-5 flex flex-col gap-3.5 h-full">
+      {/* Main Clinical Cockpit: 2 Balanced Columns */}
+      <main className="flex-1 p-5 max-w-[1600px] mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        {/* Left: Operative Record & WHO Safety (7 Columns) */}
+        <div className="lg:col-span-7 flex flex-col gap-4">
           {currentCase && (
             <>
               <WhoSafetyChecklistCard
@@ -357,10 +348,18 @@ export function App() {
               />
             </>
           )}
-        </section>
+        </div>
 
-        {/* Zone D: Right Column — Bulbul Readback & Vernacular Briefing Studio (3 Cols) */}
-        <section className="lg:col-span-3 flex flex-col gap-3.5 h-full">
+        {/* Right: Voice Console, Readback & Family Briefing (5 Columns) */}
+        <div className="lg:col-span-5 flex flex-col gap-4">
+          <SterileVoiceConsole
+            logs={logs}
+            isProcessing={isProcessing}
+            onSendTranscript={handleSendTranscript}
+            onSendAudioBlob={handleSendAudioBlob}
+            sttModel={sttModel}
+            sttMode={sttMode}
+          />
           <BulbulReadbackStudio
             currentCase={currentCase}
             latestReadbackSentence={latestReadbackSentence}
@@ -373,10 +372,10 @@ export function App() {
             onToggleAutoPlay={() => setAutoPlay((prev) => !prev)}
             onOpenCompassModal={() => setIsCompassModalOpen(true)}
           />
-        </section>
+        </div>
       </main>
 
-      {/* Modals & Inspection Drawers */}
+      {/* Modals */}
       <MongoCompassInspectorModal
         isOpen={isCompassModalOpen}
         onClose={() => setIsCompassModalOpen(false)}
